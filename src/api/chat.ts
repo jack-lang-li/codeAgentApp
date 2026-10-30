@@ -1,46 +1,14 @@
 import type { ChatHandlers, ChatMode, ChatRequest, ResponseMode, SseEvent } from '../types/chat'
 import { MODES } from '../types/chat'
 import { createSseParser } from '../utils/sse'
-
-export class ChatApiError extends Error {
-  constructor(message: string, public readonly responsePreview?: string) {
-    super(message)
-    this.name = 'ChatApiError'
-  }
-}
-
-export function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error)
-}
-
-function isObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-}
-
-function nonBlank(value: unknown): value is string {
-  return typeof value === 'string' && value.trim().length > 0
-}
+import { ApiError as ChatApiError, errorMessage, http, isObject, nonBlank, readHttpError } from './http'
+export { ApiError as ChatApiError, errorMessage, readHttpError } from './http'
 
 export function responseMode(contentType: string): ResponseMode {
   const mediaType = contentType.split(';')[0]?.trim().toLowerCase()
   if (mediaType === 'text/event-stream') return 'SSE'
   if (mediaType === 'application/json') return 'JSON'
   return 'unknown'
-}
-
-/** Error responses are handled before choosing a successful JSON/SSE branch. */
-export async function readHttpError(response: Response): Promise<ChatApiError> {
-  const body = await response.text()
-  let message = ''
-  try {
-    const parsed: unknown = JSON.parse(body)
-    if (isObject(parsed)) {
-      if (nonBlank(parsed.detail)) message = parsed.detail
-      else if (nonBlank(parsed.message)) message = parsed.message
-    }
-  } catch { /* non-JSON error: show the ordinary text below */ }
-  message ||= body.trim() || `HTTP ${response.status}${response.statusText ? ` ${response.statusText}` : ''}`
-  return new ChatApiError(message, body.slice(0, 8000))
 }
 
 function parseEventData(event: SseEvent): Record<string, unknown> {
@@ -127,7 +95,7 @@ export async function requestChat(
   signal: AbortSignal,
   handlers: ChatHandlers,
 ): Promise<void> {
-  const response = await fetch(MODES[mode].path, {
+  const response = await http.request(MODES[mode].path, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -135,12 +103,14 @@ export async function requestChat(
     },
     body: JSON.stringify(request),
     signal,
+    onResponse: (received) => {
+      const contentType = received.headers.get('Content-Type') || ''
+      handlers.onResponse({ httpStatus: received.status, contentType, responseMode: responseMode(contentType) })
+    },
   })
   signal.throwIfAborted()
   const contentType = response.headers.get('Content-Type') || ''
   const modeReceived = responseMode(contentType)
-  handlers.onResponse({ httpStatus: response.status, contentType, responseMode: modeReceived })
-  if (!response.ok) throw await readHttpError(response)
 
   if (modeReceived === 'JSON') {
     const raw = await response.text()

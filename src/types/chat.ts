@@ -26,6 +26,7 @@ export interface DebugInfo {
   events: DebugEvent[]
   eventCount: number
   error?: string
+  errorCode?: string
   responsePreview?: string
 }
 export interface ChatRecord {

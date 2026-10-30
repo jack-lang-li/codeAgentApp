@@ -18,6 +18,8 @@ const paths: Record<string, string> = {
   workflow: 'M3 3h6v6H3zM15 15h6v6h-6zM15 3h6v6h-6zM9 6h6M6 9v9h9',
   order: 'M5 3h14v18l-3-2-4 2-4-2-3 2V3Zm4 5h6m-6 4h6',
   down: 'M12 4v16m-6-6 6 6 6-6',
+  logout: 'M9 3H3v18h6m6-16 7 7-7 7M8 12h14',
+  lock: 'M5 10h14v11H5zM8 10V6a4 4 0 0 1 8 0v4m-4 5v2',
 }
 </script>
 

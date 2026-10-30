@@ -19,3 +19,12 @@ export function deferred<T = void>() {
   const promise = new Promise<T>((res, rej) => { resolve = res; reject = rej })
   return { promise, resolve, reject }
 }
+
+export function stubApiResponse(response: Response) {
+  const fetchMock = vi.fn<typeof fetch>().mockImplementation(async (path) => {
+    if (path === '/api/auth/csrf') return Response.json({ headerName: 'X-CSRF-TOKEN', token: 'test-csrf' })
+    return response
+  })
+  vi.stubGlobal('fetch', fetchMock)
+  return fetchMock
+}

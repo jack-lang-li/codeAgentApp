@@ -92,7 +92,10 @@ export function useChat(sendRequest: typeof requestChat = requestChat) {
         record.status = '失败'
         record.error = errorMessage(error)
         record.debug.error = record.error
-        if (error instanceof ChatApiError) record.debug.responsePreview = error.responsePreview
+        if (error instanceof ChatApiError) {
+          record.debug.responsePreview = error.responsePreview
+          record.debug.errorCode = error.code
+        }
       }
     } finally {
       // A stopped request may settle after a new send or clear. It must not
